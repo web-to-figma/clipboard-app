@@ -1,74 +1,28 @@
-import {useCallback, useEffect, useState} from 'react'
+import {useCallback, useState} from 'react'
 import './App.css'
-import {blobToBase64} from "./utils";
+import {readClipboard, writeToClipboard} from "./utils";
 
 function App() {
-    const [clipboardText, setClipboardText] = useState<string>()
-
-    useEffect(() => {
-        const readClipboard = async () => {
-            const result = []
-            const items = await navigator.clipboard.read({unsanitized: ['text/html']})
-            console.log(items)
-            for(const item of items) {
-                result.push({})
-                for(const type of item.types) {
-                    const blob = await item.getType(type)
-                    result[result.length - 1][type] = await blobToBase64(blob)
-                }
-            }
-
-            console.log(result)
-            setClipboardText(JSON.stringify(result))
-        }
-
-        void readClipboard()
-    }, [])
-
-    const readClipboard = useCallback(async () => {
-        const result = []
-        const items = await navigator.clipboard.read({unsanitized: ['text/html']})
-        console.log(items)
-        for(const item of items) {
-            result.push({})
-            for(const type of item.types) {
-                const blob = await item.getType(type)
-                result[result.length - 1][type] = await blobToBase64(blob)
-            }
-        }
-
-        console.log(result)
-        const text = JSON.stringify(result)
-        setClipboardText(text)
-        return text
-    }, [])
-
-    const onCopy = useCallback(async () => {
-        if(clipboardText) {
-            const data = JSON.parse(clipboardText)
-            const items = []
-            for(const part of data) {
-                const content = {}
-                for(const type in part) {
-                    const response = await fetch(part[type])
-                    content[type] = await response.blob()
-                }
-                const item = new ClipboardItem(content)
-                items.push(item)
-            }
-
-            await navigator.clipboard.write(items)
-        }
-    }, [clipboardText])
+    const [copied, setCopied] = useState<boolean>(false)
 
     const onCapture = useCallback(async () => {
-
+        const clipboardText = await readClipboard()
+        console.log(clipboardText)
+        await writeToClipboard(clipboardText)
+        setCopied(true)
+        setTimeout(() => {setCopied(false)}, 3000)
     }, [])
 
   return (
     <div className={"flex flex-col gap-4"}>
-        <textarea disabled={true} className={"w-[600px] h-[200px] hidden"} value={clipboardText}></textarea>
-        <button onClick={onCopy}>Copy to clipboard</button>
+        <button className={`border rounded-md bg-black px-3 py-2 text-white flex items-center justify-center`} onClick={onCapture}>
+            {!copied && 'Copy to clipboard'}
+            {copied &&
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 6L9 17L4 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            }
+        </button>
     </div>
   )
 }
